@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101711">
+  <title>Dustline — Open-world co-op</title>
+  <style>
+    :root{color-scheme:dark;--ink:#edf2df;--muted:#a9b49c;--lime:#c8f169;--panel:rgba(15,22,17,.88);--line:rgba(220,237,204,.16)}
+    *{box-sizing:border-box} body{margin:0;background:#101711;color:var(--ink);font:14px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+    #game{display:block;width:100vw;height:100vh;background:#273a29;cursor:crosshair}
+    .topbar{position:fixed;z-index:3;top:18px;left:20px;right:20px;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none;gap:12px}
+    .brand,.mission,.stats,.help{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px);box-shadow:0 12px 40px #0005;border-radius:12px}
+    .brand{padding:10px 14px;min-width:170px}.brand strong{display:block;letter-spacing:.18em;font-size:12px;color:var(--lime)}.brand span{font-size:11px;color:var(--muted)}
+    .mission{padding:11px 15px;max-width:390px;flex:1;margin:0 auto}.eyebrow{font-size:10px;letter-spacing:.16em;color:var(--lime);font-weight:800}.mission h1{font-size:14px;margin:2px 0 3px}.mission p{font-size:11px;margin:0;color:var(--muted)}
+    .stats{padding:10px 13px;display:flex;gap:16px;min-width:160px;justify-content:flex-end}.stat small{display:block;font-size:9px;color:var(--muted);letter-spacing:.1em}.stat b{font-size:15px}
+    .bottom{position:fixed;z-index:3;left:20px;right:20px;bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;gap:10px}.help{padding:9px 12px;font-size:10px;color:var(--muted)}.help b{color:var(--ink)}.objective{border:1px solid #c8f16966;background:#152016e8;color:var(--lime);padding:9px 13px;border-radius:9px;font-size:11px;font-weight:700;box-shadow:0 8px 30px #0005}
+    #overlay{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:radial-gradient(ellipse at center,#111a14d9,#08100deF);padding:20px}.card{width:min(560px,100%);background:#121b15;border:1px solid #d6edc22b;border-radius:18px;padding:32px;box-shadow:0 24px 100px #0009}.tag{color:var(--lime);font-weight:800;letter-spacing:.2em;font-size:11px}.card h2{font-size:clamp(34px,7vw,58px);line-height:.96;letter-spacing:-.06em;margin:12px 0}.card p{color:#bac5b1;line-height:1.6}.card .sub{font-size:12px;color:#859183}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}.keycard{padding:12px;background:#1a261c;border:1px solid var(--line);border-radius:10px;font-size:11px;color:#bac5b1}.keycard b{display:block;color:white;margin-bottom:4px}.start{border:0;background:var(--lime);color:#152014;font-weight:900;padding:13px 20px;border-radius:8px;cursor:pointer;font-size:12px;letter-spacing:.1em}.start:hover{background:#dbff9a}.hidden{display:none!important}.toast{position:fixed;z-index:4;top:100px;left:50%;transform:translateX(-50%);background:#101711eF;border:1px solid var(--line);border-radius:10px;padding:10px 16px;color:var(--lime);font-size:12px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none}.toast.show{opacity:1}
+    @media(max-width:650px){.topbar{top:9px;left:9px;right:9px}.brand{min-width:auto;padding:8px}.brand span{display:none}.mission{padding:8px 10px}.mission p{display:none}.stats{min-width:auto;padding:8px;gap:9px}.bottom{left:9px;right:9px;bottom:9px}.help{max-width:72%;font-size:9px}.objective{font-size:9px;padding:8px}}
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Dustline game world"></canvas>
+  <header class="topbar">
+    <div class="brand"><strong>DUSTLINE</strong><span>THE BORDERLANDS // CO-OP</span></div>
+    <section class="mission"><div class="eyebrow">ACTIVE CONTRACT · 01</div><h1 id="missionTitle">Signal in the Dust</h1><p id="missionText">Find the three radio caches, then reach the extraction zone.</p></section>
+    <div class="stats"><div class="stat"><small>TEAM</small><b id="teamHealth">100 / 100</b></div><div class="stat"><small>THREATS</small><b id="threatCount">0</b></div></div>
+  </header>
+  <div class="bottom"><div class="help"><b>P1</b> WASD move · F fire &nbsp; <b>P2</b> arrows move · / fire &nbsp; <b>Mouse</b> aim &nbsp; <b>R</b> restart</div><div class="objective" id="objective">CACHE 0 / 3</div></div>
+  <div class="toast" id="toast"></div>
+  <div id="overlay">
+    <div class="card">
+      <div class="tag">OPEN-WORLD CO-OP SHOOTER</div>
+      <h2>Out here,<br>you need a crew.</h2>
+      <p>Explore the borderlands, clear hostile patrols and recover three radio caches. Get both runners to the extraction flare to finish the contract.</p>
+      <div class="cards"><div class="keycard"><b>RUNNER ONE</b>W A S D to move · F to fire<br>Mouse to aim</div><div class="keycard"><b>RUNNER TWO</b>Arrow keys to move<br>/ (slash) to fire</div></div>
+      <p class="sub">Local co-op for two players on one keyboard. Stay close—if either runner falls, the whole crew is down.</p>
+      <button class="start" id="start">DROP INTO THE DUST →</button>
+    </div>
+  </div>
+<script>
+(()=>{
+  const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');
+  const $=s=>document.querySelector(s), W=2600,H=1900, keys=new Set();
+  let vw=innerWidth,vh=innerHeight,dpr=Math.min(devicePixelRatio||1,2),running=false,last=0,elapsed=0,shots=[],enemies=[],particles=[],cacheCount=0,gameOver=false,won=false,toastTimer=0;
+  const rand=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  function resize(){vw=innerWidth;vh=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=vw*dpr;canvas.height=vh*dpr;canvas.style.width=vw+'px';canvas.style.height=vh+'px'} addEventListener('resize',resize);resize();
+  const blocks=[{x:340,y:230,w:250,h:165},{x:710,y:180,w:180,h:250},{x:1100,y:330,w:310,h:150},{x:1730,y:200,w:220,h:190},{x:2100,y:410,w:270,h:160},{x:270,y:800,w:320,h:180},{x:780,y:700,w:190,h:250},{x:1270,y:790,w:260,h:180},{x:1820,y:740,w:320,h:210},{x:350,y:1360,w:240,h:190},{x:930,y:1320,w:300,h:190},{x:1540,y:1370,w:210,h:240},{x:2070,y:1270,w:300,h:220}];
+  const trees=[];for(let i=0;i<190;i++){let x=rand(35,W-35),y=rand(35,H-35);if(!blocks.some(b=>x>b.x-35&&x<b.x+b.w+35&&y>b.y-35&&y<b.y+b.h+35))trees.push({x,y,r:rand(12,27),tone:Math.random()})}
+  const caches=[{x:590,y:590,found:false},{x:1570,y:520,found:false},{x:1940,y:1110,found:false}],extract={x:2260,y:1570,r:75};
+  const players=[{x:1220,y:1050,r:14,color:'#c8f169',hp:100,speed:210,angle:0,fire:'f',name:'P1',cool:0},{x:1270,y:1090,r:14,color:'#61c9d6',hp:100,speed:195,angle:0,fire:'/',name:'P2',cool:0}];
+  function reset(){shots=[];particles=[];enemies=[];cacheCount=0;elapsed=0;gameOver=false;won=false;caches.forEach(c=>c.found=false);players[0].x=1220;players[0].y=1050;players[0].hp=100;players[1].x=1270;players[1].y=1090;players[1].hp=100;
+    for(let i=0;i<22;i++){let x,y,tries=0;do{x=rand(100,W-100);y=rand(100,H-100);tries++}while((blocks.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||dist({x,y},players[0])<400)&&tries<100);enemies.push({x,y,r:13,hp:2,speed:rand(47,68),cool:rand(.2,2),wander:rand(0,6),angle:0})}updateHud()}
+  reset();
+  function message(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2100)}
+  function updateHud(){const h=Math.max(0,players[0].hp)+Math.max(0,players[1].hp);$('#teamHealth').textContent=`${h} / 200`;$('#threatCount').textContent=enemies.filter(e=>e.hp>0).length;$('#objective').textContent=cacheCount<3?`CACHE ${cacheCount} / 3`:'REACH THE EXTRACTION FLARE';$('#missionTitle').textContent=won?'Contract complete':gameOver?'Crew down':'Signal in the Dust';$('#missionText').textContent=won?'The crew made it out. The borderlands will remember.':gameOver?'The crew was lost in the dust. Press R to redeploy.':cacheCount<3?'Find the three radio caches, then reach the extraction zone.':'Both runners must reach the extraction flare.'}
+  function blocked(x,y,r){return x<r||y<r||x>W-r||y>H-r||blocks.some(b=>x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h)}
+  function moveEntity(e,dx,dy){if(!blocked(e.x+dx,e.y,e.r))e.x+=dx;if(!blocked(e.x,e.y+dy,e.r))e.y+=dy}
+  function fire(p,angle,enemy=false){const speed=enemy?390:650;shots.push({x:p.x+Math.cos(angle)*(p.r+7),y:p.y+Math.sin(angle)*(p.r+7),vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:enemy?2:1.35,owner:enemy?'enemy':'player',damage:enemy?12:1});for(let i=0;i<3;i++)particles.push({x:p.x+Math.cos(angle)*18,y:p.y+Math.sin(angle)*18,vx:rand(-45,45),vy:rand(-45,45),life:.18,color:enemy?'#ff8b67':'#e5f1a0'})}
+  function update(dt){if(!running||gameOver||won)return;elapsed+=dt;
+    players.forEach((p,i)=>{if(p.hp<=0)return;let dx=0,dy=0;if(i===0){dx=(keys.has('d')?1:0)-(keys.has('a')?1:0);dy=(keys.has('s')?1:0)-(keys.has('w')?1:0)}else{dx=(keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0);dy=(keys.has('arrowdown')?1:0)-(keys.has('arrowup')?1:0)}let n=Math.hypot(dx,dy)||1;moveEntity(p,dx/n*p.speed*dt,dy/n*p.speed*dt);if(i===0){const wx=mouse.x+(cam.x),wy=mouse.y+cam.y;p.angle=Math.atan2(wy-p.y,wx-p.x)}else if(enemies.length){let target=enemies.filter(e=>e.hp>0).sort((a,b)=>dist(p,a)-dist(p,b))[0];if(target)p.angle=Math.atan2(target.y-p.y,target.x-p.x)}p.cool-=dt;if((keys.has(p.fire)||i===0&&mouse.down)&&p.cool<=0){fire(p,p.angle);p.cool=.23}});
+    enemies.forEach(e=>{if(e.hp<=0)return;let target=players.filter(p=>p.hp>0).sort((a,b)=>dist(e,a)-dist(e,b))[0];if(!target)return;let d=dist(e,target);e.cool-=dt;if(d<530){e.angle=Math.atan2(target.y-e.y,target.x-e.x);if(d>145)moveEntity(e,Math.cos(e.angle)*e.speed*dt,Math.sin(e.angle)*e.speed*dt);if(d<440&&e.cool<=0){fire(e,e.angle,true);e.cool=rand(1.05,1.8)}}else{e.wander-=dt;if(e.wander<=0){e.angle=rand(-Math.PI,Math.PI);e.wander=rand(1,4)}moveEntity(e,Math.cos(e.angle)*e.speed*.3*dt,Math.sin(e.angle)*e.speed*.3*dt)}});
+    shots.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;if(blocked(s.x,s.y,2)){s.life=0;return}if(s.owner==='player'){for(const e of enemies){if(e.hp>0&&Math.hypot(e.x-s.x,e.y-s.y)<e.r+4){e.hp-=s.damage;s.life=0;if(e.hp<=0){for(let j=0;j<7;j++)particles.push({x:e.x,y:e.y,vx:rand(-75,75),vy:rand(-75,75),life:rand(.2,.6),color:'#e88963'})}break}}}else{for(const p of players){if(p.hp>0&&Math.hypot(p.x-s.x,p.y-s.y)<p.r+4){p.hp=Math.max(0,p.hp-s.damage);s.life=0;break}}}});shots=shots.filter(s=>s.life>0);
+    for(const c of caches){if(!c.found&&players.some(p=>p.hp>0&&dist(p,c)<35)){c.found=true;cacheCount++;message(`Radio cache secured · ${cacheCount} / 3`);for(let i=0;i<14;i++)particles.push({x:c.x,y:c.y,vx:rand(-100,100),vy:rand(-100,100),life:rand(.3,.8),color:'#c8f169'})}}
+    if(cacheCount===3&&players.every(p=>p.hp>0&&dist(p,extract)<extract.r)) {won=true;message('Contract complete — extracted!')}
+    if(players.every(p=>p.hp<=0)){gameOver=true;message('Crew down — press R to redeploy')}
+    particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt});particles=particles.filter(p=>p.life>0);updateHud()
+  }
+  const mouse={x:vw/2,y:vh/2,down:false};let cam={x:0,y:0};canvas.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});canvas.addEventListener('mousedown',()=>mouse.down=true);addEventListener('mouseup',()=>mouse.down=false);
+  addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys.add(k);if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();if(k==='r'&&running){reset();message('Crew redeployed. Good hunting.')}});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+  function rounded(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
+  function draw(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,vw,vh);let alive=players.filter(p=>p.hp>0),cx=alive.length?alive.reduce((a,p)=>a+p.x,0)/alive.length:players[0].x,cy=alive.length?alive.reduce((a,p)=>a+p.y,0)/alive.length:players[0].y;cam.x=clamp(cx-vw/2,0,W-vw);cam.y=clamp(cy-vh/2,0,H-vh);ctx.save();ctx.translate(-cam.x,-cam.y);
+    ctx.fillStyle='#344a34';ctx.fillRect(0,0,W,H);
+    // Dust roads
+    ctx.strokeStyle='#6b684b';ctx.lineWidth=86;ctx.beginPath();ctx.moveTo(-50,1110);ctx.bezierCurveTo(520,1020,760,1190,1230,1030);ctx.bezierCurveTo(1700,870,1950,1040,2700,850);ctx.stroke();ctx.strokeStyle='#89805a';ctx.lineWidth=2;ctx.setLineDash([16,20]);ctx.stroke();ctx.setLineDash([]);
+    // Ground texture
+    for(let i=0;i<130;i++){let x=(i*197+73)%W,y=(i*313+51)%H;ctx.fillStyle=i%2?'#46583b':'#283a2c';ctx.globalAlpha=.35;ctx.beginPath();ctx.arc(x,y,(i%4)+2,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+    trees.forEach(t=>{ctx.fillStyle='#202e24';ctx.beginPath();ctx.ellipse(t.x+5,t.y+8,t.r*1.1,t.r*.8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=t.tone>.5?'#4b6740':'#3e5b3b';ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#69824a';ctx.beginPath();ctx.arc(t.x-5,t.y-6,t.r*.52,0,Math.PI*2);ctx.fill()});
+    blocks.forEach((b,i)=>{ctx.fillStyle='#202720';ctx.fillRect(b.x+8,b.y+11,b.w,b.h);ctx.fillStyle=i%3===0?'#68705a':'#77705c';ctx.fillRect(b.x,b.y,b.w,b.h);ctx.fillStyle='#93866b';ctx.fillRect(b.x+5,b.y+5,b.w-10,9);ctx.fillStyle='#42483b';ctx.fillRect(b.x+b.w*.35,b.y+b.h-23,36,23);ctx.fillStyle='#aaa17d';ctx.fillRect(b.x+b.w*.35+4,b.y+b.h-19,28,19);ctx.strokeStyle='#292f27';ctx.lineWidth=4;ctx.strokeRect(b.x,b.y,b.w,b.h)});
+    // Extraction marker
+    ctx.beginPath();ctx.arc(extract.x,extract.y,extract.r,0,Math.PI*2);ctx.fillStyle='#83dc7130';ctx.fill();ctx.strokeStyle='#b9ff82';ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#d9ff98';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('EXTRACTION',extract.x,extract.y+extract.r+20);ctx.fillStyle='#e7ffad';ctx.fillRect(extract.x-2,extract.y-56,4,36);ctx.fillStyle='#c8f169';ctx.beginPath();ctx.moveTo(extract.x+2,extract.y-56);ctx.lineTo(extract.x+30,extract.y-48);ctx.lineTo(extract.x+2,extract.y-39);ctx.fill();
+    caches.forEach(c=>{if(c.found)return;let pulse=1+Math.sin(elapsed*4)*.12;ctx.save();ctx.translate(c.x,c.y);ctx.scale(pulse,pulse);ctx.shadowColor='#d9ff63';ctx.shadowBlur=22;ctx.fillStyle='#c8f169';ctx.beginPath();ctx.moveTo(0,-15);ctx.lineTo(13,0);ctx.lineTo(0,15);ctx.lineTo(-13,0);ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#27341c';ctx.fillRect(-5,-5,10,10);ctx.restore();ctx.fillStyle='#e9f4d0';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('RADIO CACHE',c.x,c.y-25)});
+    enemies.forEach(e=>{if(e.hp<=0)return;ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.angle);ctx.fillStyle='#161c19';rounded(-12,-10,25,20,6);ctx.fill();ctx.fillStyle='#e37e5e';ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.fill();ctx.fillStyle='#28251f';ctx.fillRect(2,-3,20,6);ctx.restore();ctx.fillStyle='#241f1b';ctx.fillRect(e.x-13,e.y-21,26,3);ctx.fillStyle='#f18a64';ctx.fillRect(e.x-13,e.y-21,26*(e.hp/2),3)});
+    shots.forEach(s=>{ctx.fillStyle=s.owner==='enemy'?'#ff8962':'#f3f5c5';ctx.beginPath();ctx.arc(s.x,s.y,s.owner==='enemy'?3:3.5,0,Math.PI*2);ctx.fill()});
+    particles.forEach(p=>{ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3)});ctx.globalAlpha=1;
+    players.forEach((p,i)=>{if(p.hp<=0)return;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);ctx.fillStyle='#172019';rounded(-13,-12,28,24,7);ctx.fill();ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();ctx.fillStyle='#272b21';ctx.fillRect(2,-3,23,6);ctx.fillStyle='#f1f0dc';ctx.beginPath();ctx.arc(4,-4,2,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle=p.color;ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(p.name,p.x,p.y-22);ctx.fillStyle='#192019';ctx.fillRect(p.x-15,p.y+18,30,4);ctx.fillStyle=p.color;ctx.fillRect(p.x-15,p.y+18,30*(p.hp/100),4)});
+    ctx.restore();drawMini();if(gameOver||won){ctx.fillStyle='#08100d88';ctx.fillRect(0,0,vw,vh);ctx.fillStyle=won?'#c8f169':'#ff9678';ctx.textAlign='center';ctx.font='900 30px system-ui';ctx.fillText(won?'CONTRACT COMPLETE':'CREW DOWN',vw/2,vh/2);ctx.font='13px system-ui';ctx.fillStyle='#e8eee0';ctx.fillText('Press R to play again',vw/2,vh/2+26)}requestAnimationFrame(frame)}
+  function drawMini(){const mw=130,mh=95,x=vw-mw-20,y=vh-mh-95;ctx.fillStyle='#101711dc';ctx.strokeStyle='#ffffff33';ctx.lineWidth=1;ctx.fillRect(x,y,mw,mh);ctx.strokeRect(x,y,mw,mh);const sx=mw/W,sy=mh/H;blocks.forEach(b=>{ctx.fillStyle='#73715e';ctx.fillRect(x+b.x*sx,y+b.y*sy,b.w*sx,b.h*sy)});caches.filter(c=>!c.found).forEach(c=>{ctx.fillStyle='#c8f169';ctx.fillRect(x+c.x*sx-2,y+c.y*sy-2,4,4)});enemies.filter(e=>e.hp>0).forEach(e=>{ctx.fillStyle='#e37e5e';ctx.fillRect(x+e.x*sx-1,y+e.y*sy-1,3,3)});players.forEach(p=>{if(p.hp>0){ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(x+p.x*sx,y+p.y*sy,3,0,Math.PI*2);ctx.fill()}});ctx.fillStyle='#b3bea8';ctx.font='9px system-ui';ctx.textAlign='left';ctx.fillText('FIELD MAP',x+6,y+11)}
+  function frame(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw()}
+  $('#start').addEventListener('click',()=>{$('#overlay').classList.add('hidden');running=true;last=performance.now()});
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
